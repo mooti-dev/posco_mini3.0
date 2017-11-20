@@ -608,7 +608,7 @@ router.route('/poscoLogin').post(function (req, res) {
                 else {
 
                     var found = false;
-                    for(x=0; x < users.count; x++){
+                    for(x=0; x < users.length; x++){
 
                         console.log("comparing " + user[x].browserPrint + " to " + browserPrint);
                         if(users[x].browserPrint == browserPrint){
