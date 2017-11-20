@@ -535,7 +535,7 @@ router.route('/updateUser').post(function (req, res) {
                 res.json({status: 'success', code: 1, error: err});
             }
             //return  response;
-            
+
             db.close();
         });
 
@@ -607,16 +607,24 @@ router.route('/poscoLogin').post(function (req, res) {
                 }
                 else {
 
-                    if(users[0].browserPrint != browserPrint){
+                    var found = false;
+                    for(x=0; x < users.count; x++){
 
+                        if(users[x].browserPrint == browserPrint){
+                            found = true;
+                            break;
+                        }
+
+                    }
+
+                    if(!found){
                         console.log('user found different finger print');
                         res.json({status: 'success', code: 1});
                     }
                     else{
                         res.json({status: 'success', code: 0});
                     }
-
-
+                    
                 }
 
             }
