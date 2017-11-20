@@ -610,7 +610,10 @@ router.route('/poscoLogin').post(function (req, res) {
                     var found = false;
                     for(x=0; x < users.count; x++){
 
+                        console.log("comparing " + user[x].browserPrint + " to " + browserPrint);
                         if(users[x].browserPrint == browserPrint){
+
+                            console.log("found fingerprint");
                             found = true;
                             break;
                         }
@@ -624,7 +627,7 @@ router.route('/poscoLogin').post(function (req, res) {
                     else{
                         res.json({status: 'success', code: 0});
                     }
-                    
+
                 }
 
             }
