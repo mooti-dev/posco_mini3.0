@@ -23,9 +23,14 @@ var WebSocket = require('ws');
 
 var fs = require('fs');
 
+var Web3 = require('web3');
+
 
 var connections = {};
 var count = 0;
+
+
+var node_address = 'http://13.124.246.189:8545/';
 
 
 //these parameters are needed to connect to DB; used by almost every route
@@ -35,7 +40,9 @@ var db = "mooti";
 var dbhost ="mootidev.c5yxa5wex9tp.us-west-1.rds.amazonaws.com";
 
 
-var MONGODBHOST = "54.67.113.149";
+//var MONGODBHOST = "54.67.113.149";
+
+var MONGODBHOST = "127.0.0.1";
 
 // configure app to use bodyParser(); this will let us get the data from a POST
 app.use(bodyParser.json({limit: '50mb'}));
@@ -368,8 +375,99 @@ var router = express.Router();
 // test route to make sure everything is working (accessed at GET http://localhost:8080/)
 router.get('/', function (req, res) {
     //this route does not require any parameters as input
-    res.json({message: 'MOOTI API SERVER'});
+
+
+
+
+    /*
+
+    var web3 = new Web3(new Web3.providers.HttpProvider(node_address));
+
+
+    if(!web3.isConnected())
+        console.log("not connected");
+    else
+        console.log("connected");
+
+
+
+
+    var accounts = web3.eth.accounts;
+    console.log(accounts);
+
+
+    var coinbase = web3.eth.coinbase;
+    console.log(coinbase);
+    //var balance = web3.eth.getBalance("0x407d73d8a49eeb85d32cf465507dd71d507100c1");
+    //console.log(balance);
+
+
+    //web3.personal.unlockAccount(web3.accounts[0],"skeeter1@", 15000)
+
+    console.log(web3.eth.getBalance(web3.eth.accounts[0]).toString(10));
+
+    web3.eth.sendTransaction({to:'0x7f9fade1c0d57a7af66ab4ead7c2eb7b11a91385',
+        data: '0x0001'}, function(err, result) {
+        if (!err) {
+            console.log(result); // "0x7f9fade1c0d57a7af66ab4ead7c2eb7b11a91385"
+        }
+        else{
+            console.log('transaction err == ' + err)
+        }
+    });
+
+    */
+
+    var str="TEST DATA";
+    var result = "";
+    for (i=0; i<str.length; i++) {
+        hex = str.charCodeAt(i).toString(16);
+        result += (hex).slice(-4);
+    }
+
+
+    console.log('hex string = ' + result);
+
+    var node_address = 'http://13.124.246.189:8545/';
+    //Custom Header pass
+    var headersOpt =
+    {
+        ContentType: 'application/json'
+    };
+
+    //var postData = '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":67}';
+
+    //{"jsonrpc":"2.0","method": "eth_sendTransaction", "params": [{"from": "0xa2051505226eb0f0986912d7e822bbed9294ac6b", "to": "0xa2051505226eb0f0986912d7e822bbed9294ac6b","data": "0x5445535420444154410a"}],  "id": 8}
+    var postData = {
+        jsonrpc: '2.0',
+        method: 'eth_sendTransaction',
+        params: [{from: "0xa2051505226eb0f0986912d7e822bbed9294ac6b", to: "0xa2051505226eb0f0986912d7e822bbed9294ac6b",data: "0x"+ result}],
+        id: '2'
+    };
+    // call the web service
+    request.post({
+            url: node_address,
+            json: postData
+        },
+        function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+
+                console.log('response recieved ==>' + JSON.stringify(body));
+
+            }
+            else{
+                console.log('error ==>' + error + " " + response.statusCode);
+            }
+        });
+
+
+
+
+
+    res.json({result: "ok"});
+
 });
+
 
 
 
@@ -505,7 +603,7 @@ router.route('/updateUser').post(function (req, res) {
 
     // connect to mooti db
     // Connection URL
-    var url = 'mongodb://' + MONGODBHOST + ':27017/fileshare';
+    var url = 'mongodb://root:skeeter@' + MONGODBHOST + ':27017/posco';
 
 // Use connect method to connect to the server
     MongoClient.connect(url, function(err, db) {
@@ -520,14 +618,74 @@ router.route('/updateUser').post(function (req, res) {
 
         users = db.collection('users');
         // create the document
-        var user = {userName: userName,  browserPrint: browserPrint};
+
+        var serverKeys = sodium.crypto_box_keypair();
+        var secretKey = serverKeys.secretKey;
+        var publicKey = serverKeys.publicKey;
+
+        console.log('SecretKey =' + new Buffer(secretKey, 'binary').toString('base64'));
+        console.log('PublicKey = ' + new Buffer(publicKey, 'binary').toString('base64'));
+
+
+        var keys = {
+            "secretkey": new Buffer(secretKey, 'binary').toString('base64'),
+            "publicKey": new Buffer(publicKey, 'binary').toString('base64')
+        };
+
+
+
+
+        var user = {userName: userName,  browserPrint: browserPrint, keys: keys};
         users.insertOne(user, function(err, r){
 
 
             if(err == null){
                 console.log('create user success');
-                res.json({status: 'success', code: 0});
 
+                var data = convertToHex(JSON.stringify(user));
+
+
+                var postData = {
+                    jsonrpc: '2.0',
+                    method: 'eth_sendTransaction',
+                    params: [{from: "0xa2051505226eb0f0986912d7e822bbed9294ac6b", to: "0xa2051505226eb0f0986912d7e822bbed9294ac6b",data: data}],
+                    id: 1000
+                };
+                // call the web service
+                request.post({
+                        url: node_address,
+                        json: postData
+                    },
+                    function (error, response, body) {
+                        if (!error && response.statusCode == 200) {
+
+                            console.log('response recieved ==>' + JSON.stringify(body));
+
+                            var print = browserPrint;
+
+
+                            db.collection('logging').insertOne({
+                                userName: userName,
+                                browserPrint: print,
+                                action: 'create user',
+                                blockchainId: body.result
+                            }, function(err, res) {
+                                if (err) throw err;
+                                console.log("1 document inserted");
+                                db.close();
+                            });
+
+
+                        }
+                        else{
+                            console.log('error ==>' + error + " " + response.statusCode);
+                        }
+                    });
+
+
+
+
+                res.json({status: 'success', code: 0});
 
             }
             else{
@@ -536,7 +694,7 @@ router.route('/updateUser').post(function (req, res) {
             }
             //return  response;
 
-            db.close();
+            //db.close();
         });
 
     });
@@ -544,6 +702,20 @@ router.route('/updateUser').post(function (req, res) {
 });
 
 
+
+function convertToHex(value){
+
+    var result = "";
+    for (i=0; i<value.length; i++) {
+        hex = value.charCodeAt(i).toString(16);
+        result += (hex).slice(-4);
+    }
+
+    result = "0x"+result;
+
+}
+
+router.route
 
 //create post method for route '/getFile'
 router.route('/poscoLogin').post(function (req, res) {
@@ -554,7 +726,7 @@ router.route('/poscoLogin').post(function (req, res) {
 
     // connect to mooti db
     // Connection URL
-    var url = 'mongodb://' + MONGODBHOST + ':27017/fileshare';
+    var url = 'mongodb://' + MONGODBHOST + ':27017/posco';
 
 // Use connect method to connect to the server
     MongoClient.connect(url, function(err, db) {
@@ -613,6 +785,54 @@ router.route('/poscoLogin').post(function (req, res) {
                         console.log("comparing " + users[x].browserPrint + " to " + browserPrint);
                         if(users[x].browserPrint == browserPrint){
 
+
+
+                            var data = convertToHex(JSON.stringify(users[x]));
+
+
+                            var postData = {
+                                jsonrpc: '2.0',
+                                method: 'eth_sendTransaction',
+                                params: [{from: "0xa2051505226eb0f0986912d7e822bbed9294ac6b", to: "0xa2051505226eb0f0986912d7e822bbed9294ac6b",data: data}],
+                                id: users[x]._id
+                            };
+                            // call the web service
+                            request.post({
+                                    url: node_address,
+                                    json: postData
+                                },
+                                function (error, response, body) {
+                                    if (!error && response.statusCode == 200) {
+
+                                        console.log('response recieved ==>' + JSON.stringify(body));
+
+                                        var print = users[x].browserPrint;
+                                        var name = users[x].userName = userName;
+
+
+
+                                        db.collection('logging').insertOne({
+                                            userName: userName,
+                                            browserPrint: print,
+                                            action: 'validate',
+                                            blockchainId: body.result
+                                        }, function(err, res) {
+                                            if (err) throw err;
+                                            console.log("1 document inserted");
+                                            db.close();
+                                        });
+
+
+                                    }
+                                    else{
+                                        console.log('error ==>' + error + " " + response.statusCode);
+                                    }
+                                });
+
+
+
+                            //users[x].set('blockchainID',  'testid');
+
                             console.log("found fingerprint");
                             found = true;
                             break;
@@ -622,16 +842,67 @@ router.route('/poscoLogin').post(function (req, res) {
 
                     if(!found){
                         console.log('user found different finger print');
+
+
+                        var data = convertToHex(JSON.stringify({userName:userName, browserPrint:browserPrint}));
+
+
+                        var postData = {
+                            jsonrpc: '2.0',
+                            method: 'eth_sendTransaction',
+                            params: [{from: "0xa2051505226eb0f0986912d7e822bbed9294ac6b", to: "0xa2051505226eb0f0986912d7e822bbed9294ac6b",data: data}],
+                            id: 9999
+                        };
+                        // call the web service
+                        request.post({
+                                url: node_address,
+                                json: postData
+                            },
+                            function (error, response, body) {
+                                if (!error && response.statusCode == 200) {
+
+                                    console.log('response recieved ==>' + JSON.stringify(body));
+
+                                    var print = browserPrint;
+
+
+
+
+                                    db.collection('logging').insertOne({
+                                        userName: userName,
+                                        browserPrint: print,
+                                        action: 'not-validate',
+                                        blockchainId: body.result
+                                    }, function(err, res) {
+                                        if (err) throw err;
+                                        console.log("1 document inserted");
+                                        db.close();
+                                    });
+
+
+                                }
+                                else{
+                                    console.log('error ==>' + error + " " + response.statusCode);
+                                }
+                            });
+
+
+
+
                         res.json({status: 'success', code: 1});
                     }
                     else{
+
+
+
+
                         res.json({status: 'success', code: 0});
                     }
 
                 }
 
             }
-            db.close();
+            //db.close();
         });
 
         //db.close();
