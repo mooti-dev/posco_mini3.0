@@ -603,11 +603,12 @@ router.route('/updateUser').post(function (req, res) {
 
     // connect to mooti db
     // Connection URL
-    var url = 'mongodb://root:skeeter@' + MONGODBHOST + ':27017/posco';
+    var url = 'mongodb://root:skeeter@' + MONGODBHOST + ':27017';///posco';
+
 
 // Use connect method to connect to the server
     MongoClient.connect(url, function(err, db) {
-
+	db = db.db('posco');
         if(err == null) {
             console.log("Connected successfully to server");
         }
@@ -644,7 +645,7 @@ router.route('/updateUser').post(function (req, res) {
 
                 var data = convertToHex(JSON.stringify(user));
 
-
+		console.log('user = ' + user + ' data = ' + convertToHex(JSON.stringify(user)));
                 var postData = {
                     jsonrpc: '2.0',
                     method: 'eth_sendTransaction',
@@ -709,9 +710,9 @@ function convertToHex(value){
     for (i=0; i<value.length; i++) {
         hex = value.charCodeAt(i).toString(16);
         result += (hex).slice(-4);
+	//console.log('result = ' + result);
     }
-
-    result = "0x"+result;
+    return "0x"+result;
 
 }
 
@@ -726,11 +727,11 @@ router.route('/poscoLogin').post(function (req, res) {
 
     // connect to mooti db
     // Connection URL
-    var url = 'mongodb://' + MONGODBHOST + ':27017/posco';
+    var url = 'mongodb://root:skeeter@' + MONGODBHOST + ':27017';
 
 // Use connect method to connect to the server
     MongoClient.connect(url, function(err, db) {
-
+	db = db.db('posco');
         if(err == null) {
             console.log("Connected successfully to server");
         }
